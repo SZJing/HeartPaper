@@ -26,17 +26,23 @@ import java.util.ArrayList;
 public class MyService extends WallpaperService {
     Bitmap bitmap;
     Bitmap res;
-    private String path;
-
+    static String path;
+    private int waterId = 0;
+    public static final String IMAGE_ID = "com.my.water";
     public static final String VIDEO_PARAMS_CONTROL_ACTION = "com.zhy.livewallpaper";
+    Bitmap bitmap1;
 
     public MyService() {
     }
 
 
     public static void ImagePath(Context context, String data){
-        Intent intent = new Intent(MyService.VIDEO_PARAMS_CONTROL_ACTION);
-        intent.putExtra("ImagePath",data);
+        path = data;
+    }
+
+    public static void ImageId(Context context,String imageId){
+        Intent intent = new Intent(MyService.IMAGE_ID);
+        intent.putExtra("WaterId",String.valueOf(imageId));
         context.sendBroadcast(intent);
     }
 
@@ -56,11 +62,12 @@ public class MyService extends WallpaperService {
 
     class MyEnfine extends Engine {
 
-        private static final int DIS_SOLP = 80;
+        private static final int DIS_SOLP = 100;
         private ArrayList<Wave> wList;
         private boolean mVisible;
         protected boolean isRuning = false;
         private BroadcastReceiver mImageReceiver;
+        private BroadcastReceiver WaterReceiver;
 
 
         private class Wave {
@@ -83,32 +90,21 @@ public class MyService extends WallpaperService {
 
 
         @Override
-        public void onCreate(SurfaceHolder surfaceHolder) {
+        public void onCreate(final SurfaceHolder surfaceHolder) {
             super.onCreate(surfaceHolder);
-            IntentFilter intentFilter = new IntentFilter(VIDEO_PARAMS_CONTROL_ACTION);
-            registerReceiver(mImageReceiver = new BroadcastReceiver() {
+
+            IntentFilter intentFilter1 = new IntentFilter(IMAGE_ID);
+            registerReceiver(WaterReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
+                    String Id = intent.getStringExtra("WaterId");
+                    if (Id != null){
+                        waterId = Integer.valueOf(Id);
+                    }
 
-                        path = intent.getStringExtra("ImagePath");
                 }
-            },intentFilter);
-            if (path == null){
-                bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.ic_back);
-            }else {
-                bitmap = BitmapFactory.decodeFile(path);
-            }
+            },intentFilter1);
 
-            WindowManager wm = (WindowManager) getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
-            int width2 = wm.getDefaultDisplay().getWidth();
-            int height2 = wm.getDefaultDisplay().getHeight();
-            int width1 = bitmap.getWidth();
-            int height1 = bitmap.getHeight();
-            float scaleWight = ((float)width2)/width1;
-            float scaleHeight = ((float)height2)/height1;
-            Matrix matrix = new Matrix();
-            matrix.preScale(scaleWight,scaleHeight);
-            res = Bitmap.createBitmap(bitmap,0,0,width1,height1,matrix,true);
 
             wList = new ArrayList<>();
             // 初始化画笔
@@ -121,7 +117,10 @@ public class MyService extends WallpaperService {
 
         @Override
         public void onDestroy() {
-            unregisterReceiver(mImageReceiver);
+            if (WaterReceiver != null){
+                unregisterReceiver(WaterReceiver);
+            }
+
             super.onDestroy();
             // 删除回调
             mHandler.removeCallbacks(drawTarget);
@@ -229,7 +228,7 @@ public class MyService extends WallpaperService {
             if (mVisible && isRuning) {
 
 
-                // 指定0.1秒后重新执行mDrawCube一次
+                // 重画
                 mHandler.postDelayed(drawTarget,50);
             }
         }
@@ -238,7 +237,11 @@ public class MyService extends WallpaperService {
         private void drawTouchPoint(Canvas c) {
             for (int i = 0; i < wList.size(); i++) {
                 Wave wave = wList.get(i);
-                Bitmap bitmap1 = BitmapFactory.decodeResource(getResources(),R.mipmap.heart_icon);
+                if (waterId == 0) {
+                    bitmap1 = BitmapFactory.decodeResource(getResources(), R.mipmap.heart_icon);
+                }else{
+                    bitmap1 = BitmapFactory.decodeResource(getResources(),waterId);
+                }
                 c.drawBitmap(bitmap1,wave.cx,wave.cy,wave.p);
 
             }
@@ -247,6 +250,55 @@ public class MyService extends WallpaperService {
         @Override
         public void onSurfaceChanged(SurfaceHolder holder, int format, int width, int height) {
             super.onSurfaceChanged(holder, format, width, height);
+
+            if (path == null){
+                bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.ic_back);
+            }else {
+                bitmap = BitmapFactory.decodeFile(path);
+            }
+
+            WindowManager wm = (WindowManager) getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
+            int width2 = wm.getDefaultDisplay().getWidth();
+            int height2 = wm.getDefaultDisplay().getHeight();
+            int width1 = bitmap.getWidth();
+            int height1 = bitmap.getHeight();
+            Matrix matrix = new Matrix();
+            if (width1 >= width2 && height1 >= height2){
+                float scaleWight1 = ((float)width2)/width1;
+                float scaleHeight1 = ((float)height2)/height1;
+                float Scale;
+                if (scaleWight1 - scaleHeight1 >= 0){
+                    Scale = scaleWight1;
+                }else {
+                    Scale = scaleHeight1;
+                }
+                matrix.preScale(Scale,Scale);
+                res = Bitmap.createBitmap(bitmap,0,0,width1,height1,matrix,true);
+            }
+            if (width1 < width2 && height1 < height2){
+                float scaleWight = ((float)width2)/width1;
+                float scaleHeight = ((float)height2)/height1;
+                float Scale2;
+                if (scaleWight - scaleHeight >= 0){
+                    Scale2 = scaleWight;
+                }else {
+                    Scale2 = scaleHeight;
+                }
+                matrix.preScale(Scale2,Scale2);
+                res = Bitmap.createBitmap(bitmap,0,0,width1,height1,matrix,true);
+            }
+            if (width1 >= width2 && height1 < height2){
+                int x2 = (width1 - width2)/2;
+                float scaleH = ((float)height2)/height1;
+                matrix.preScale(scaleH,scaleH);
+                res = Bitmap.createBitmap(bitmap,x2,0,width1,height1,matrix,true);
+            }
+            if (width1 < width2 && height1 >= height2){
+                int y2 = (height1 - height2)/2;
+                float scaleW = ((float)width2)/width1;
+                matrix.preScale(scaleW,scaleW);
+                res = Bitmap.createBitmap(bitmap,0,y2,width1,height1,matrix,true);
+            }
 
 
             Canvas ca = holder.lockCanvas();

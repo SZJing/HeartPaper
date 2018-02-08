@@ -25,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
     public static final int CHOOSE_PHOTO = 2;
     public static final int CHOOSE_WATER = 3;
     String NewPath;
+    String WaterId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,11 +89,19 @@ public class MainActivity extends AppCompatActivity {
                 if (resultCode == RESULT_OK){
                     if (Build.VERSION.SDK_INT >= 19){
                         handleImageOnKitKat(data);
+                        MyService.ImagePath(MainActivity.this,NewPath);
+                        MyService.setToWallPaper(MainActivity.this);
                     }else{
                         handleImageBeforeKitKat(data);
                     }
                 }
                 break;
+            case CHOOSE_WATER:
+                if (resultCode == RESULT_OK){
+                    WaterId = data.getStringExtra("WaterId");
+                    MyService.ImageId(MainActivity.this,WaterId);
+                    Toast.makeText(MainActivity.this,"水印已经设置好",Toast.LENGTH_SHORT).show();
+                }
             default:
                 break;
         }
